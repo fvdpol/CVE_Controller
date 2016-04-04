@@ -70,6 +70,7 @@ H - High Humidity -> setpoint override
 
 Kingbright SA52-11 HWA Pinout
 
+
 ```
  10   9   8   7   6
   |   |   |   |   |
@@ -84,6 +85,8 @@ Kingbright SA52-11 HWA Pinout
   |   |   |   |   |
   1   2   3   4   5
 ```
+
+!(Hardware/Display/Kingbright SA52-11 HWA.jpg)
 
 | Pin | Function |
 | --- | -------- |
