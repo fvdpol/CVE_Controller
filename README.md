@@ -86,7 +86,7 @@ Kingbright SA52-11 HWA Pinout
   1   2   3   4   5
 ```
 
-!(Hardware/Display/Kingbright SA52-11 HWA.jpg)
+![Kingbright SA52-11 HWA Pinout](https://raw.githubusercontent.com/fvdpol/CVE_Controller/master/Hardware/Display/Kingbright%20SA52-11%20HWA.jpg[Kingbright SA52-11 HWA Pinout])
 
 | Pin | Function |
 | --- | -------- |
