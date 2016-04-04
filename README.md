@@ -118,45 +118,32 @@ Coil with 220V; contact switch input on Arduino
 
 Arduino I/O Assignment
 
-| Pin | Function |
+| Pin | Function 
 | --- | --------
 | A4  |	I2C SDA
 | A5  |	I2C SCL
 |     |
-|     | Input A (manual selection Speed=2)
-|     | Input B (manual selection Speed=3)
+| A0  | Input A (manual selection Speed=2)
+| A1  | Input B (manual selection Speed=3)
 |     |
-|     | Output Relay 1 
-|     | Output Relay 2 
-|     | Output Relay 3 
-|     | Output Relay 4 (tbd) 
+| D2  | Output Relay 1 
+| D3  | Output Relay 2 
+| D4  | Output Relay 3 
+| D5  | Output Relay 4 (tbd) 
 |     |
-|     | Output 7 segment display a
-|     | Output 7 segment display b
-|     | Output 7 segment display c
-|     | Output 7 segment display d
-|     | Output 7 segment display e
-|     | Output 7 segment display f
-|     | Output 7 segment display g
+| D6  | Output 7 segment display a
+| D7  | Output 7 segment display b
+| D8  | Output 7 segment display c
+| D9  | Output 7 segment display d
+| D10 | Output 7 segment display e
+| D11 | Output 7 segment display f
+| D12 | Output 7 segment display g
 | D13 | Output 7 segment display dp + onload LED Arduino 
 | 
-| D2  |
-| D3  |
-| D4  |
-| D5  |
-| D6  |
-| D7  |
-| D8  |
-| D9  |
-| D10 |
-| D11 |
-| D12 |
-| A0  |
-| A1  |
-| A2  |
-| A3  |
-| A6  |
-| A7  |
+| A2  |	Unassigned
+| A3  | Unassigned
+| A6  | Unassigned
+| A7  | Unassigned
 
 
 
