@@ -118,12 +118,46 @@ Coil with 220V; contact switch input on Arduino
 
 Arduino I/O Assignment
 
-A4	I2C SDA
-A5	I2C SCL
+| Pin | Function |
+| --- | --------
+| A4  |	I2C SDA
+| A5  |	I2C SCL
+|     |
+|     | Input A (manual selection Speed=2)
+|     | Input B (manual selection Speed=3)
+|     |
+|     | Output Relay 1 
+|     | Output Relay 2 
+|     | Output Relay 3 
+|     | Output Relay 4 (tbd) 
+|     |
+|     | Output 7 segment display a
+|     | Output 7 segment display b
+|     | Output 7 segment display c
+|     | Output 7 segment display d
+|     | Output 7 segment display e
+|     | Output 7 segment display f
+|     | Output 7 segment display g
+| D13 | Output 7 segment display dp + onload LED Arduino 
+| 
+| D2  |
+| D3  |
+| D4  |
+| D5  |
+| D6  |
+| D7  |
+| D8  |
+| D9  |
+| D10 |
+| D11 |
+| D12 |
+| A0  |
+| A1  |
+| A2  |
+| A3  |
+| A6  |
+| A7  |
 
-
-
-D13	Led onboard + 7 segment decimal dot
 
 
 
