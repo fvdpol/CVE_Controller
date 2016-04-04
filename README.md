@@ -46,21 +46,17 @@ Advantages:
   watchdog: blink the dot on the 7-segment display
    
   
-  Hardware: 
-    Arduino Mini Pro 5v    
+##  Hardware 
     
-    4-relay board (with opto isolators)
-    7 segment display (Kingbright SA52-11HWA, common anode)
-    SI7021 I2C Humidity sensor for exhaust air monitoring
-    
-    
-    
-  Set Arduino IDE to:
+### Arduino Mini Pro 5v       
+
+ Set Arduino IDE to:
     Board:      Arduino Pro or Pro Mini
     Processor:  ATMega 328 (5V, 16 MHz)
   
 
-
+### 4-relay board (with opto isolators)
+### 7 segment display (Kingbright SA52-11HWA, common anode)
 
 LED Display:
 
@@ -70,4 +66,63 @@ LED Display:
 3 - fan in high speed
 
 H - High Humidity -> setpoint override
+
+
+Kingbright SA52-11 HWA Pinout
+
+```
+ 10   9   8   7   6
+  |   |   |   |   |
+
+         __a__
+       f/    /b
+       /__g_/ 
+     e/    /c
+     /____/  x
+       d     dp
+
+  |   |   |   |   |
+  1   2   3   4   5
+```
+
+| Pin | Function |
+| --- | -------- |
+| 1   | e        |
+| 2   | d        |
+| 3   | CA       |
+| 4   | c        |
+| 5   | dp       |
+| 6   | b        |
+| 7   | a        |
+| 8   | CA       |
+| 9   | f        |
+| 10  | g        |
+
+
+
+
+### SI7021 I2C Humidity sensor for exhaust air monitoring
+
+### 220V Relay for input monitoring
+
+Coil with 220V; contact switch input on Arduino    
+    
+    
+ 
+
+
+
+
+Arduino I/O Assignment
+
+A4	I2C SDA
+A5	I2C SCL
+
+
+
+D13	Led onboard + 7 segment decimal dot
+
+
+
+
 
