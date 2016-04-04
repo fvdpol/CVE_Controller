@@ -1,6 +1,10 @@
 # CVE_Controller
 
 Controller for the Itho CVE unit
+
+
+Current Status: Idea, no working hardware/software
+
 Frank van de Pol, 2016
 
 Objective:
@@ -138,7 +142,7 @@ Arduino I/O Assignment
 | D10 | Output 7 segment display e
 | D11 | Output 7 segment display f
 | D12 | Output 7 segment display g
-| D13 | Output 7 segment display dp + onload LED Arduino 
+| D13 | Output 7 segment display dp + onboard LED Arduino 
 | 
 | A2  |	Unassigned
 | A3  | Unassigned

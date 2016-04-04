@@ -49,32 +49,317 @@
 
 */
 
-/*
-  Blink
-  Turns on an LED on for one second, then off for one second, repeatedly.
 
-  Most Arduinos have an on-board LED you can control. On the Uno and
-  Leonardo, it is attached to digital pin 13. If you're unsure what
-  pin the on-board LED is connected to on your Arduino model, check
-  the documentation at http://arduino.cc
 
-  This example code is in the public domain.
+#define _ENABLE_HEARTBEAT
+#define HEARTBEAT_LED       13   // Arduino Digital 4, JeeNode Port 1-Digital
+#define HEARTBEAT_INVERTED
+#define HEARTBEAT_WATCHDOG
 
-  modified 8 May 2014
-  by Scott Fitzgerald
- */
+#ifdef HEARTBEAT_WATCHDOG
+#include <avr/wdt.h>
+#endif
+#include <EEPROM.h>
+#include <JeeLib.h>
+#include <SerialCommand.h>
+
+
+#define SERIAL_BAUD 57600
+
+
+#define LED_GLOWTIME  1  /* in 0.1s */
+
+
+enum {
+#ifdef _ENABLE_HEARTBEAT 
+  TASK_HEARTBEAT,
+#endif
+  TASK_LIFESIGN,
+  TASK_LIMIT };
+
+static word schedBuf[TASK_LIMIT];
+Scheduler scheduler (schedBuf, TASK_LIMIT);
+
+bool debug_txt = false;
+
+#ifdef _ENABLE_HEARTBEAT
+int heartbeat_state = 0;
+#endif
+
+SerialCommand sCmd;     // The SerialCommand object
+
+
+
+int freeRam () {
+  extern int __heap_start, *__brkval; 
+  int v; 
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
+
+// code to display the sketch name/compile date
+// http://forum.arduino.cc/index.php?PHPSESSID=82046rhab9h76mt6q7p8fle0u4&topic=118605.msg894017#msg894017
+
+int pgm_lastIndexOf(uint8_t c, const char * p)
+{
+  int last_index = -1; // -1 indicates no match
+  uint8_t b;
+  for(int i = 0; true; i++) {
+    b = pgm_read_byte(p++);
+    if (b == c)
+      last_index = i;
+    else if (b == 0) break;
+  }
+  return last_index;
+}
+
+// displays at startup the Sketch running in the Arduino
+void display_srcfile_details(void){
+  const char *the_path = PSTR(__FILE__);           // save RAM, use flash to hold __FILE__ instead
+
+  int slash_loc = pgm_lastIndexOf('/',the_path); // index of last '/' 
+  if (slash_loc < 0) slash_loc = pgm_lastIndexOf('\\',the_path); // or last '\' (windows, ugh)
+
+  int dot_loc = pgm_lastIndexOf('.',the_path);   // index of last '.'
+  if (dot_loc < 0) dot_loc = pgm_lastIndexOf(0,the_path); // if no dot, return end of string
+
+  Serial.print(F("\n\nSketch: "));  
+  for (int i = slash_loc+1; i < dot_loc; i++) {
+    uint8_t b = pgm_read_byte(&the_path[i]);
+    if (b != 0) Serial.print((char) b);
+    else break;
+  }
+
+  Serial.print(F(", Compiled on: "));
+  Serial.print(F(__DATE__));
+  Serial.print(F(" at "));
+  Serial.println(F(__TIME__));
+}
+
+void showHelp(void) 
+{  
+  display_srcfile_details(); 
+  Serial.print(F("Free RAM:   "));
+  Serial.println(freeRam());
+  
+  
+  Serial.println(F("\n"
+      "Available commands:\n"
+      
+      " on   - led on\n" 
+      " off  - led off\n"
+      " hang - test watchdog\n"
+      " hello [name]\n"
+      " p <arg1> <arg2>\n"
+#ifdef _ENABLE_DS1820
+      " scan - scan bus for DX18x20 sensors\n" 
+#endif
+//      " d  - toggle debug messages\n"
+//      " l  - send lifesign message\n"
+      " ?  - show this help\n"
+      "\n"));  
+}
+
+
 
 
 // the setup function runs once when you press reset or power the board
 void setup() {
-  // initialize digital pin 13 as an output.
-  pinMode(13, OUTPUT);
+  #ifdef HEARTBEAT_WATCHDOG
+  // start hardware watchdog
+  wdt_enable(WDTO_8S);
+#endif
+
+
+
+  // put your setup code here, to run once:
+  
+#ifdef HEARTBEAT_LED
+  pinMode(HEARTBEAT_LED, OUTPUT);
+#ifdef HEARTBEAT_INVERTED
+  digitalWrite(HEARTBEAT_LED, LOW);
+#else
+  digitalWrite(HEARTBEAT_LED, HIGH);
+#endif  
+#endif
+#ifdef _ENABLE_HEARTBEAT
+  scheduler.timer(TASK_HEARTBEAT, 1);
+#endif
+
+  Serial.begin(SERIAL_BAUD);
+  showHelp();
+    
+
+  // Setup callbacks for SerialCommand commands
+  sCmd.addCommand("on",    LED_on);          // Turns LED on
+  sCmd.addCommand("off",   LED_off);         // Turns LED off
+  sCmd.addCommand("hang", Hang);  
+
+#ifdef _ENABLE_DS1820
+  sCmd.addCommand("scan",  DS1820_ScanBus);         // 
+#endif
+
+  sCmd.addCommand("hello", sayHello);        // Echos the string argument back
+  sCmd.addCommand("p",     processCommand);  // Converts two arguments to integers and echos them back
+  sCmd.setDefaultHandler(unrecognized);      // Handler for command that isn't matched  (says "What?")
+
+
+
+  
 }
 
-// the loop function runs over and over again forever
 void loop() {
-  digitalWrite(13, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(100);              // wait for a second
-  digitalWrite(13, LOW);    // turn the LED off by making the voltage LOW
-  delay(100);              // wait for a second
+//  while (Serial.available())
+//    handleInput(Serial.read());
+  sCmd.readSerial();     // We don't do much, just process serial commands
+
+  
+  switch (scheduler.poll()) {
+
+//    case TASK_LIFESIGN:
+//      if (debug_txt) {  
+//        Serial.println(F("Send Lifesign message"));
+//      }
+//
+//      scheduler.timer(TASK_LIFESIGN, LIFESIGN_INTERVAL);
+//      break;
+
+
+#ifdef _ENABLE_HEARTBEAT      
+    case TASK_HEARTBEAT:
+#ifdef HEARTBEAT_WATCHDOG
+      wdt_reset(); // reset the hardware watchdog timer
+      scheduler.timer(TASK_HEARTBEAT, 20);
+#endif
+#ifdef HEARTBEAT_LED
+      switch (heartbeat_state) {
+        case 0:
+#ifdef HEARTBEAT_INVERTED
+            digitalWrite(HEARTBEAT_LED, LOW);
+#else
+            digitalWrite(HEARTBEAT_LED, HIGH);
+#endif  
+          scheduler.timer(TASK_HEARTBEAT, 1);
+          heartbeat_state = 1;
+          break;
+
+        case 1:
+#ifdef HEARTBEAT_INVERTED
+            digitalWrite(HEARTBEAT_LED, HIGH);
+#else
+            digitalWrite(HEARTBEAT_LED, LOW);
+#endif  
+          scheduler.timer(TASK_HEARTBEAT, 2);
+          heartbeat_state = 2;
+          break;
+
+        case 2:
+#ifdef HEARTBEAT_INVERTED
+          digitalWrite(HEARTBEAT_LED, LOW);
+#else
+          digitalWrite(HEARTBEAT_LED, HIGH);
+#endif  
+          scheduler.timer(TASK_HEARTBEAT, 1);
+          heartbeat_state = 3;
+          break;
+
+        case 3:
+#ifdef HEARTBEAT_INVERTED
+            digitalWrite(HEARTBEAT_LED, HIGH);
+#else
+            digitalWrite(HEARTBEAT_LED, LOW);
+#endif  
+          scheduler.timer(TASK_HEARTBEAT, 10);
+          heartbeat_state = 0;
+          break;                
+      }
+#endif /* HEARTBEAT_LED */      
+      break;
+#endif /* _ENABLE_HEARTBEAT */   
+      
+      
+      
+  }
+
 }
+
+
+
+
+// serial command handlers (examples from library)
+
+void LED_on() {
+  Serial.println(F("LED on"));
+  //digitalWrite(arduinoLED, HIGH);
+}
+
+void LED_off() {
+  Serial.println(F("LED off"));
+  //digitalWrite(arduinoLED, LOW);
+}
+
+
+void Hang(void) {
+  Serial.println(F("\nHangup... to test watchdog...\n"));
+  for (int i=1; i<60; i++) {
+    Serial.println(i);
+    delay(1000);
+  }
+  Serial.println(F("Sleepy watchdog???"));
+}
+
+void sayHello() {
+  char *arg;
+  arg = sCmd.next();    // Get the next argument from the SerialCommand object buffer
+  if (arg != NULL) {    // As long as it existed, take it
+    Serial.print(F("Hello "));
+    Serial.println(arg);
+  }
+  else {
+    Serial.println(F("Hello, whoever you are"));
+  }
+}
+
+
+void processCommand() {
+  int aNumber;
+  char *arg;
+
+  Serial.println(F("We're in processCommand"));
+  arg = sCmd.next();
+  if (arg != NULL) {
+    aNumber = atoi(arg);    // Converts a char string to an integer
+    Serial.print(F("First argument was: "));
+    Serial.println(aNumber);
+  }
+  else {
+    Serial.println(F("No arguments"));
+  }
+
+  arg = sCmd.next();
+  if (arg != NULL) {
+    aNumber = atol(arg);
+    Serial.print(F("Second argument was: "));
+    Serial.println(aNumber);
+  }
+  else {
+    Serial.println(F("No second argument"));
+  }
+}
+
+
+
+
+
+
+
+
+// This gets set as the default handler, and gets called when no other command matches.
+void unrecognized(const char *command) {
+  showHelp();
+}
+
+
+
+
+
