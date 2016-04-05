@@ -65,11 +65,11 @@
 #include <avr/wdt.h>
 #endif
 #include <EEPROM.h>
-#include <JeeLib.h>
-#include <SerialCommand.h>  
+#include <JeeLib.h>           // https://github.com/jcw/jeelib
+#include <SerialCommand.h>    // https://github.com/kroimon/Arduino-SerialCommand
 
 #include <Wire.h>
-#include <SI7021.h>        // https://github.com/mlsorensen/SI7021
+#include <SI7021.h>           // https://github.com/fvdpol/SI7021
 
 
 #define SERIAL_BAUD 57600
@@ -201,14 +201,25 @@ void setup() {
 
 
 
-  sensor.begin();
-  sensor.setHeater(false);
-  
-  scheduler.timer(TASK_SENSOR, 1);
 
 
   Serial.begin(SERIAL_BAUD);
   showHelp();
+
+
+  
+  sensor.begin();
+  if (sensor.sensorExists()) {
+    Serial.print("SI70");
+    Serial.print(sensor.getDeviceId());
+    sensor.setHeater(false);
+  } else {
+    Serial.print(F("No SI702x"));
+  }
+  Serial.println(F(" Humidity Sensor detected"));
+  
+  scheduler.timer(TASK_SENSOR, 1);
+
     
 
   // Setup callbacks for SerialCommand commands
@@ -249,12 +260,13 @@ void loop() {
       if (debug_txt) {  
         Serial.println(F("Send Lifesign message"));
       }
-      {
-        si7021_env data = sensor.getHumidityAndTemperature();
-        Serial.print("Temperature: ");
-        Serial.println(data.celsiusHundredths/100.0);
-        Serial.print("Humidity:    ");
-        Serial.println(data.humidityBasisPoints/100.0);
+      if (sensor.sensorExists()) {
+
+          si7021_env data = sensor.getHumidityAndTemperature();
+          Serial.print("Temperature: ");
+          Serial.println(data.celsiusHundredths/100.0);
+          Serial.print("Humidity:    ");
+          Serial.println(data.humidityBasisPoints/100.0);
       }
 
 
