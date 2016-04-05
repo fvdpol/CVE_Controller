@@ -37,13 +37,18 @@
     
     4-relay board (with opto isolators)
     7 segment display (Kingbright SA52-11HWA, common anode)
-    SI7021 I2C Humidity sensor for exhaust air monitoring
+    SI7020 I2C Humidity sensor for exhaust air monitoring (board with on-board voltage regulator and level converters)
     
     
     
   Set Arduino IDE to:
     Board:      Arduino Pro or Pro Mini
     Processor:  ATMega 328 (5V, 16 MHz)
+    
+    Note: make sure correct bootloader is installed to avoid the board
+    locking-up when watchdog reset occurs.
+    https://andreasrohner.at/posts/Electronics/How-to-make-the-Watchdog-Timer-work-on-an-Arduino-Pro-Mini-by-replacing-the-bootloader/
+
   
 
 
@@ -61,7 +66,10 @@
 #endif
 #include <EEPROM.h>
 #include <JeeLib.h>
-#include <SerialCommand.h>
+#include <SerialCommand.h>  
+
+#include <Wire.h>
+#include <SI7021.h>        // https://github.com/mlsorensen/SI7021
 
 
 #define SERIAL_BAUD 57600
@@ -69,18 +77,23 @@
 
 #define LED_GLOWTIME  1  /* in 0.1s */
 
+#define SENSOR_INTERVAL 50  /* in 0.1s */
 
 enum {
 #ifdef _ENABLE_HEARTBEAT 
   TASK_HEARTBEAT,
 #endif
   TASK_LIFESIGN,
+  TASK_SENSOR,
   TASK_LIMIT };
 
 static word schedBuf[TASK_LIMIT];
 Scheduler scheduler (schedBuf, TASK_LIMIT);
 
 bool debug_txt = false;
+
+SI7021 sensor;
+
 
 #ifdef _ENABLE_HEARTBEAT
 int heartbeat_state = 0;
@@ -186,6 +199,14 @@ void setup() {
   scheduler.timer(TASK_HEARTBEAT, 1);
 #endif
 
+
+
+  sensor.begin();
+  sensor.setHeater(false);
+  
+  scheduler.timer(TASK_SENSOR, 1);
+
+
   Serial.begin(SERIAL_BAUD);
   showHelp();
     
@@ -223,6 +244,22 @@ void loop() {
 //
 //      scheduler.timer(TASK_LIFESIGN, LIFESIGN_INTERVAL);
 //      break;
+
+    case TASK_SENSOR:
+      if (debug_txt) {  
+        Serial.println(F("Send Lifesign message"));
+      }
+      {
+        si7021_env data = sensor.getHumidityAndTemperature();
+        Serial.print("Temperature: ");
+        Serial.println(data.celsiusHundredths/100.0);
+        Serial.print("Humidity:    ");
+        Serial.println(data.humidityBasisPoints/100.0);
+      }
+
+
+      scheduler.timer(TASK_SENSOR, SENSOR_INTERVAL);
+      break;
 
 
 #ifdef _ENABLE_HEARTBEAT      

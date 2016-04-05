@@ -153,4 +153,56 @@ Arduino I/O Assignment
 
 
 
+Issue: Watchdog is nog working; when the watchdog gets activated the Arduino Pro hangs instead of performing a reboot
+
+https://andreasrohner.at/posts/Electronics/How-to-make-the-Watchdog-Timer-work-on-an-Arduino-Pro-Mini-by-replacing-the-bootloader/
+
+
+https://www.arduino.cc/en/Tutorial/ArduinoISP
+pins for ISP programming of new bootloader
+
+ISCP Connector
+![ISP 6Pin](https://www.arduino.cc/en/uploads/Tutorial/ISP.png)
+
+| Pin | ISP connector  	| ISP Programmer	
+| --- | -------------  	| -------------- 
+|  1  | MISO		   	| D12				
+|  2  | VCC				| 5V 				 
+|  3  | SCK 			| D13				
+|  4  | MOSI			| D11				
+|  5  | /RESET 			| D10				
+|  6  | GND 			| GND				
+
+As the Arduino Pro Mini has a 6-pin ISP connector the programming was simply done by using ArduinoISP on an Uno
+Connections from Uno (programmer) to the Pro Mini (target) using 6 pin to 6 pin connector, with the exception of the reset line: pin 10 to pin 5 on the target's isp connector. To prevent the Uno auto-reset a 10uF capacitor was installed between Uno's reset pin and ground.
+
+
+
+
+## SI7021 Library
+
+https://github.com/mlsorensen/SI7021
+
+Features
+
+Precision Relative Humidity Sensor:
+	Si7013/21: ± 3% RH (maximum) @ 0–80% RH
+>>	Si7020/34: ± 4% RH (maximum) @ 0–80% RH
+	Si7006: ± 5% RH (maximum) @ 0–80% RH
+Temperature Sensor:
+>>	Si7013/20/21/34: ±0.4 °C accuracy (maximum) @ -10 to +85 °C
+	Si7006: ±1.0 °C accuracy (maximum) @ -10 to +85 °C
+0 to 100% RH operating range
+Up to -40 to +125 °C operating range
+
+Integrated on-chip heater
+Tiny DFN package
+	Si7006/13/20/21: 3 mm x 3 mm
+	Si7034: 2 mm x 2 mm
+Excellent long term stability
+Factory calibrated
+Optional factory-installed filter/cover
+Lifetime protection during reflow and in operation
+Protects against contamination from dust, dirt, household chemicals and other liquids
+AEC-Q100 automotive qualified (Si7013/20/21/34)
 
