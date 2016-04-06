@@ -3,7 +3,21 @@
 Controller for the Itho CVE unit
 
 
-Current Status: Idea, no working hardware/software
+Current Status: work in progress 
+	
+Todo:
+	- readout of input switch
+	- control of relay
+	- state machine
+	- mains wiring
+
+Done:
+	- contruction of case/hardware
+	- command parser
+	- heartbeat
+	- watchdog (including bootloader upgrade)
+	- control of 7-segment display
+	- read temperature moisture from SI7020 sensor
 
 Frank van de Pol, 2016
 
@@ -48,6 +62,70 @@ Advantages:
   github arduino stuff: aparte repo per library/project (check: werkt dit met meerdere computers en sharing over seafile?)
   
   watchdog: blink the dot on the 7-segment display
+
+
+
+
+State Machine
+
+Initial:
+	--> State 1
+
+State 0:
+	Command Transition to 1 --> State 1
+	Command Transition to 2 --> State 2
+	Command Transition to 3 --> State 3
+	Switch Change to 1 --> State 1
+	Switch Change to 2 --> State 2
+	Switch Change to 3 --> State 3
+    Humidiy > SPhi --> store control state as 3; go to State H
+
+State 1:
+	Command Transition to 0 --> State 0
+	Command Transition to 2 --> State 2
+	Command Transition to 3 --> State 3
+	Switch Change to 2 --> State 2
+	Switch Change to 3 --> State 3
+    Humidiy > SPhi --> store control state as 3; go to State H
+
+State 2:
+	Command Transition to 0 --> State 0
+	Command Transition to 1 --> State 1
+	Command Transition to 3 --> State 3
+	Switch Change to 1 --> State 1
+	Switch Change to 3 --> State 3
+    Humidiy > SPhi --> store control state as 3; go to State H
+
+State 3:
+	Command Transition to 0 --> State 0
+	Command Transition to 1 --> State 1
+	Command Transition to 2 --> State 2
+	Switch Change to 1 --> State 1
+	Switch Change to 2 --> State 2
+    Humidiy > SPhi --> store control state as 3; go to State H 
+
+State H:
+	Command Transition to 0 --> State 0
+	Command Transition to 1 --> State 1
+	Command Transition to 2 --> State 2
+	Command Transition to 3 --> State 3
+	Switch Change to 1 --> State 1
+	Switch Change to 2 --> State 2
+	Switch Change to 3 --> State 3
+    Humidiy < SPlo --> go to control State 
+
+
+>> simplification;
+* Command Transition is always respected; go to requested state
+* Input switch needs to detect changes (take into account delay/debounce); go to requested state
+* Humidity > SPhi; store control state & transition to H state
+* Humidity < SPlo; return to control state 
+
+enforce SPhi > SPlo
+
+* store SP in EEProm
+* at initialisation, read switch and use to transition
+
    
   
 ##  Hardware 

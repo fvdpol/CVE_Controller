@@ -11,7 +11,7 @@
       automatic switching basis the Humidity sensor values
   
  - humidity control: 
-        SP hi,  
+        SP hi, SP lo (allow hysteresis) 
       
   - read-out/monitoring of state, measurements (temperature, humidity)
   
@@ -103,9 +103,6 @@ bool debug_txt = false;
 SI7021 sensor;
 
 
-#ifdef _ENABLE_HEARTBEAT
-int heartbeat_state = 0;
-#endif
 
 SerialCommand sCmd;     // The SerialCommand object
 
@@ -167,14 +164,11 @@ void showHelp(void)
   Serial.println(F("\n"
       "Available commands:\n"
       
-      " on   - led on\n" 
-      " off  - led off\n"
       " hang - test watchdog\n"
+      " disp [c] - display character\n"
+      
       " hello [name]\n"
       " p <arg1> <arg2>\n"
-#ifdef _ENABLE_DS1820
-      " scan - scan bus for DX18x20 sensors\n" 
-#endif
 //      " d  - toggle debug messages\n"
 //      " l  - send lifesign message\n"
       " ?  - show this help\n"
@@ -186,7 +180,7 @@ void showHelp(void)
 
 // the setup function runs once when you press reset or power the board
 void setup() {
-  #ifdef HEARTBEAT_WATCHDOG
+#ifdef HEARTBEAT_WATCHDOG
   // start hardware watchdog
   wdt_enable(WDTO_8S);
 #endif
@@ -215,7 +209,8 @@ void setup() {
   showHelp();
 
 
-  
+  // Sensor setup
+  //
   sensor.begin();
   if (sensor.sensorExists()) {
     Serial.print("SI70");
@@ -229,8 +224,8 @@ void setup() {
   scheduler.timer(TASK_SENSOR, 1);
 
 
-  // display setup
-  
+  // Display setup
+  //  
   pinMode(DISPLAY_A, OUTPUT);
   pinMode(DISPLAY_B, OUTPUT);
   pinMode(DISPLAY_C, OUTPUT);
@@ -241,26 +236,37 @@ void setup() {
   pinMode(DISPLAY_DP, OUTPUT);
 
   setDisplay(' ');
+  delay(500); 
   digitalWrite(DISPLAY_DP, HIGH);
-  
+  setDisplay('8');
+  delay(500);  
+  setDisplay(' ');
+  delay(500); 
     
 
   // Setup callbacks for SerialCommand commands
-  sCmd.addCommand("on",    LED_on);          // Turns LED on
-  sCmd.addCommand("off",   LED_off);         // Turns LED off
-  sCmd.addCommand("hang", Hang);  
+  sCmd.addCommand("hang", commandHang);  
 
-#ifdef _ENABLE_DS1820
-  sCmd.addCommand("scan",  DS1820_ScanBus);         // 
-#endif
 
-  sCmd.addCommand("hello", sayHello);        // Echos the string argument back
-  sCmd.addCommand("disp",     dispCommand);  // Converts two arguments to integers and echos them back
+  sCmd.addCommand("hello", commandHello);        // Echos the string argument back
+  sCmd.addCommand("disp",  commandDisp);  // Converts two arguments to integers and echos them back
   sCmd.addCommand("p",     processCommand);  // Converts two arguments to integers and echos them back
   sCmd.setDefaultHandler(unrecognized);      // Handler for command that isn't matched  (says "What?")
 
 
 
+
+  delay(500);
+  setDisplay('0');
+  delay(500);
+  setDisplay('1');
+  delay(500);
+  setDisplay('2');
+  delay(500);
+  setDisplay('3');
+ delay(500);
+  setDisplay('H');
+   
   
 }
 
@@ -300,6 +306,23 @@ void loop() {
 
 #ifdef _ENABLE_HEARTBEAT      
     case TASK_HEARTBEAT:
+        handleHeartBeat();
+      break;
+#endif /* _ENABLE_HEARTBEAT */   
+      
+      
+      
+  }
+
+}
+
+
+
+#ifdef _ENABLE_HEARTBEAT
+void handleHeartBeat(void)
+{
+      static int heartbeat_state = 0;
+
 #ifdef HEARTBEAT_WATCHDOG
       wdt_reset(); // reset the hardware watchdog timer
       scheduler.timer(TASK_HEARTBEAT, 20);
@@ -347,32 +370,17 @@ void loop() {
           break;                
       }
 #endif /* HEARTBEAT_LED */      
-      break;
-#endif /* _ENABLE_HEARTBEAT */   
-      
-      
-      
-  }
-
+#endif /* _ENABLE_HEARTBEAT */
 }
 
 
 
 
-// serial command handlers (examples from library)
+//
+// Command Handlers
+//
 
-void LED_on() {
-  Serial.println(F("LED on"));
-  //digitalWrite(arduinoLED, HIGH);
-}
-
-void LED_off() {
-  Serial.println(F("LED off"));
-  //digitalWrite(arduinoLED, LOW);
-}
-
-
-void Hang(void) {
+void commandHang(void) {
   Serial.println(F("\nHangup... to test watchdog...\n"));
   for (int i=1; i<60; i++) {
     Serial.println(i);
@@ -381,7 +389,19 @@ void Hang(void) {
   Serial.println(F("Sleepy watchdog???"));
 }
 
-void sayHello() {
+void commandDisp() {
+  char *arg;
+  arg = sCmd.next();    // Get the next argument from the SerialCommand object buffer
+  if (arg != NULL) {    // As long as it existed, take it
+    char c = arg[0];
+    Serial.print(F("Display: "));
+    Serial.println(c);
+    setDisplay(c);
+  }
+}
+
+
+void commandHello() {
   char *arg;
   arg = sCmd.next();    // Get the next argument from the SerialCommand object buffer
   if (arg != NULL) {    // As long as it existed, take it
@@ -393,19 +413,6 @@ void sayHello() {
   }
 }
 
-void dispCommand() {
-  char *arg;
-  arg = sCmd.next();    // Get the next argument from the SerialCommand object buffer
-  if (arg != NULL) {    // As long as it existed, take it
-    char c = arg[0];
-    Serial.print(F("Display: "));
-    Serial.println(c);
-    setDisplay(c);
-  }
-  else {
-    Serial.println(F("???"));
-  }
-}
 
 
 void processCommand() {
@@ -488,6 +495,17 @@ void setDisplay(char code) {
         digitalWrite(DISPLAY_F, HIGH);
         digitalWrite(DISPLAY_G, LOW);
         break;
+
+     case '8':
+        digitalWrite(DISPLAY_A, LOW);
+        digitalWrite(DISPLAY_B, LOW);
+        digitalWrite(DISPLAY_C, LOW);
+        digitalWrite(DISPLAY_D, LOW);
+        digitalWrite(DISPLAY_E, LOW);
+        digitalWrite(DISPLAY_F, LOW);
+        digitalWrite(DISPLAY_G, LOW);
+        break;
+       
 
      case 'H':
         digitalWrite(DISPLAY_A, HIGH);
