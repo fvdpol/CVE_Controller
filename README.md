@@ -206,3 +206,14 @@ Lifetime protection during reflow and in operation
 Protects against contamination from dust, dirt, household chemicals and other liquids
 AEC-Q100 automotive qualified (Si7013/20/21/34)
 
+
+Pinout:
+
+| Pin | Function | Wire Color
+| --- | -------- | ----------
+| 1   | VIN      | Red
+| 2   | GND      | Blue (+shield)
+| 3   | SCL      | White
+| 4   | SDA      | Yellow
+
+

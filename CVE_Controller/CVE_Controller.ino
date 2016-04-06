@@ -54,6 +54,14 @@
 
 */
 
+#define DISPLAY_A  6
+#define DISPLAY_B  7
+#define DISPLAY_C  8
+#define DISPLAY_D  9
+#define DISPLAY_E  10
+#define DISPLAY_F  11
+#define DISPLAY_G  12
+#define DISPLAY_DP 13
 
 
 #define _ENABLE_HEARTBEAT
@@ -220,6 +228,21 @@ void setup() {
   
   scheduler.timer(TASK_SENSOR, 1);
 
+
+  // display setup
+  
+  pinMode(DISPLAY_A, OUTPUT);
+  pinMode(DISPLAY_B, OUTPUT);
+  pinMode(DISPLAY_C, OUTPUT);
+  pinMode(DISPLAY_D, OUTPUT);
+  pinMode(DISPLAY_E, OUTPUT);
+  pinMode(DISPLAY_F, OUTPUT);
+  pinMode(DISPLAY_G, OUTPUT);
+  pinMode(DISPLAY_DP, OUTPUT);
+
+  setDisplay(' ');
+  digitalWrite(DISPLAY_DP, HIGH);
+  
     
 
   // Setup callbacks for SerialCommand commands
@@ -232,6 +255,7 @@ void setup() {
 #endif
 
   sCmd.addCommand("hello", sayHello);        // Echos the string argument back
+  sCmd.addCommand("disp",     dispCommand);  // Converts two arguments to integers and echos them back
   sCmd.addCommand("p",     processCommand);  // Converts two arguments to integers and echos them back
   sCmd.setDefaultHandler(unrecognized);      // Handler for command that isn't matched  (says "What?")
 
@@ -369,6 +393,20 @@ void sayHello() {
   }
 }
 
+void dispCommand() {
+  char *arg;
+  arg = sCmd.next();    // Get the next argument from the SerialCommand object buffer
+  if (arg != NULL) {    // As long as it existed, take it
+    char c = arg[0];
+    Serial.print(F("Display: "));
+    Serial.println(c);
+    setDisplay(c);
+  }
+  else {
+    Serial.println(F("???"));
+  }
+}
+
 
 void processCommand() {
   int aNumber;
@@ -408,6 +446,71 @@ void unrecognized(const char *command) {
   showHelp();
 }
 
+
+void setDisplay(char code) {
+  switch(code) {
+     case '0':
+        digitalWrite(DISPLAY_A, LOW);
+        digitalWrite(DISPLAY_B, LOW);
+        digitalWrite(DISPLAY_C, LOW);
+        digitalWrite(DISPLAY_D, LOW);
+        digitalWrite(DISPLAY_E, LOW);
+        digitalWrite(DISPLAY_F, LOW);
+        digitalWrite(DISPLAY_G, HIGH);
+        break;
+
+     case '1':
+        digitalWrite(DISPLAY_A, HIGH);
+        digitalWrite(DISPLAY_B, LOW);
+        digitalWrite(DISPLAY_C, LOW);
+        digitalWrite(DISPLAY_D, HIGH);
+        digitalWrite(DISPLAY_E, HIGH);
+        digitalWrite(DISPLAY_F, HIGH);
+        digitalWrite(DISPLAY_G, HIGH);
+        break;
+
+     case '2':
+        digitalWrite(DISPLAY_A, LOW);
+        digitalWrite(DISPLAY_B, LOW);
+        digitalWrite(DISPLAY_C, HIGH);
+        digitalWrite(DISPLAY_D, LOW);
+        digitalWrite(DISPLAY_E, LOW);
+        digitalWrite(DISPLAY_F, HIGH);
+        digitalWrite(DISPLAY_G, LOW);
+        break;
+
+     case '3':
+        digitalWrite(DISPLAY_A, LOW);
+        digitalWrite(DISPLAY_B, LOW);
+        digitalWrite(DISPLAY_C, LOW);
+        digitalWrite(DISPLAY_D, LOW);
+        digitalWrite(DISPLAY_E, HIGH);
+        digitalWrite(DISPLAY_F, HIGH);
+        digitalWrite(DISPLAY_G, LOW);
+        break;
+
+     case 'H':
+        digitalWrite(DISPLAY_A, HIGH);
+        digitalWrite(DISPLAY_B, LOW);
+        digitalWrite(DISPLAY_C, LOW);
+        digitalWrite(DISPLAY_D, HIGH);
+        digitalWrite(DISPLAY_E, LOW);
+        digitalWrite(DISPLAY_F, LOW);
+        digitalWrite(DISPLAY_G, LOW);
+        break;
+       
+    default:
+        // blank
+       digitalWrite(DISPLAY_A, HIGH);
+       digitalWrite(DISPLAY_B, HIGH);
+       digitalWrite(DISPLAY_C, HIGH);
+       digitalWrite(DISPLAY_D, HIGH);
+       digitalWrite(DISPLAY_E, HIGH);
+       digitalWrite(DISPLAY_F, HIGH);
+       digitalWrite(DISPLAY_G, HIGH);
+  }
+ }
+ 
 
 
 
