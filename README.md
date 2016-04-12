@@ -194,11 +194,25 @@ Coil with 220V; contact switch input on Arduino
     
     
  
+# Relay output switching
+
+Configuration is set to make the default (controller unpowered) state is CVE running at speed #1
+
+ ![CVE Relay configuration](https://raw.githubusercontent.com/fvdpol/CVE_Controller/master/Hardware/CVE%20SRelay%20SDiagram.png)
+
+
+| RE1 | RE2 | RE3 | State   |
+| --- | --- | --- | ------- |
+| 0   | 0   | x   | speed 1 |
+| 0   | 1   | 0   | speed 2 |
+| 0   | 1   | 1   | speed 3 |
+| 1   | x   | x   | speed 0 |
 
 
 
 
-Arduino I/O Assignment
+
+#Arduino I/O Assignment
 
 | Pin | Function 
 | --- | --------
@@ -226,6 +240,9 @@ Arduino I/O Assignment
 | A3  | Unassigned
 | A6  | Unassigned
 | A7  | Unassigned
+
+
+
 
 
 
@@ -261,28 +278,25 @@ Connections from Uno (programmer) to the Pro Mini (target) using 6 pin to 6 pin 
 
 https://github.com/mlsorensen/SI7021
 
-Features
 
-Precision Relative Humidity Sensor:
-	Si7013/21: ± 3% RH (maximum) @ 0–80% RH
->>	Si7020/34: ± 4% RH (maximum) @ 0–80% RH
-	Si7006: ± 5% RH (maximum) @ 0–80% RH
-Temperature Sensor:
->>	Si7013/20/21/34: ±0.4 °C accuracy (maximum) @ -10 to +85 °C
-	Si7006: ±1.0 °C accuracy (maximum) @ -10 to +85 °C
-0 to 100% RH operating range
-Up to -40 to +125 °C operating range
+http://www.silabs.com/products/sensors/humidity-sensors/Pages/si7013-20-21.aspx
 
-Integrated on-chip heater
-Tiny DFN package
-	Si7006/13/20/21: 3 mm x 3 mm
-	Si7034: 2 mm x 2 mm
-Excellent long term stability
-Factory calibrated
-Optional factory-installed filter/cover
-Lifetime protection during reflow and in operation
-Protects against contamination from dust, dirt, household chemicals and other liquids
-AEC-Q100 automotive qualified (Si7013/20/21/34)
+Sensor Features
+
+- Precision Relative Humidity Sensor: ± 4% RH (maximum) @ 0–80% RH
+- Temperature Sensor: ±0.4 °C accuracy (maximum) @ -10 to +85 °C
+- 0 to 100% RH operating range
+- Up to -40 to +125 °C operating range
+- I2C host interface
+- Integrated on-chip heater
+- Tiny DFN package 3 mm x 3 mm
+- Excellent long term stability
+- Factory calibrated
+- Optional factory-installed filter/cover
+- Lifetime protection during reflow and in operation
+- Protects against contamination from dust, dirt, household chemicals and other liquids
+- AEC-Q100 automotive qualified (Si7013/20/21/34)
+
 
 
 Pinout:
