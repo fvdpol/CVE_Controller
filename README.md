@@ -198,7 +198,7 @@ Coil with 220V; contact switch input on Arduino
 
 Configuration is set to make the default (controller unpowered) state is CVE running at speed #1
 
- ![CVE Relay configuration](https://raw.githubusercontent.com/fvdpol/CVE_Controller/master/Hardware/CVE%20SRelay%20SDiagram.png)
+ ![CVE Relay configuration](https://raw.githubusercontent.com/fvdpol/CVE_Controller/master/Hardware/CVE%20Relay%20Diagram.png)
 
 
 | RE1 | RE2 | RE3 | State   |
