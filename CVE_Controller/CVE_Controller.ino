@@ -78,6 +78,9 @@
 #define HEARTBEAT_INVERTED
 #define HEARTBEAT_WATCHDOG
 
+
+#include "types.h"
+
 #ifdef HEARTBEAT_WATCHDOG
 #include <avr/wdt.h>
 #endif
@@ -111,10 +114,20 @@ bool debug_txt = false;
 
 SI7021 sensor;
 
-
-
 SerialCommand sCmd;     // The SerialCommand object
 
+
+
+fanspeed_t   buttonState = SPEED_UNDEFINED ;   
+
+
+// control sources
+fanspeed_t  speed_select_switch   = SPEED_UNDEFINED;
+fanspeed_t  speed_select_remote   = SPEED_UNDEFINED;
+fanspeed_t  speed_select_humidity = SPEED_UNDEFINED;
+
+// output
+fanspeed_t  speed_select_fan      = SPEED_UNDEFINED;
 
 
 int freeRam () {
@@ -298,6 +311,12 @@ void loop() {
 //    handleInput(Serial.read());
   sCmd.readSerial();     // We don't do much, just process serial commands
 
+  if (SwitchChanged()) {
+    speed_select_switch = GetSwitchState();
+    Serial.print(F("Switch changed state to ")); 
+    Serial.println(speed_select_switch); 
+    //TODO: handle state transition etc.
+  }
   
   switch (scheduler.poll()) {
 
@@ -551,6 +570,69 @@ void setDisplay(char code) {
        digitalWrite(DISPLAY_G, HIGH);
   }
  }
+ 
+ 
+
+
+
+// scanning of the input switch 
+bool SwitchChanged(void)
+{
+  static fanspeed_t lastButtonState = SPEED_UNDEFINED;   // the previous reading from the input pin
+
+// the following variables are long's because the time, measured in miliseconds,
+// will quickly become a bigger number than can be stored in an int.
+  static long lastDebounceTime = 0;  // the last time the output pin was toggled
+  long debounceDelay = 50;          // the debounce time; increase if the output flickers
+
+   
+  bool changed=false;
+
+  fanspeed_t reading = (fanspeed_t) (1 + digitalRead(SW_SPEED2) + (digitalRead(SW_SPEED3) << 1));
+  
+  // Switch label  SW_SPEED2  SW_SPEED3  speed
+  //  "1"           0         0          SPEED_1 = 1              
+  //  "2"           1         0          SPEED_2 = 2
+  //  "3"           0         1          SPEED_3 = 3
+  //                1         1          n/a
+
+
+  // check to see if you just pressed the button
+  // (i.e. the input went from LOW to HIGH),  and you've waited
+  // long enough since the last press to ignore any noise:
+
+  // If the switch changed, due to noise or pressing:
+  if (reading != lastButtonState) {
+    // reset the debouncing timer
+    lastDebounceTime = millis();
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    // whatever the reading is at, it's been there for longer
+    // than the debounce delay, so take it as the actual current state:
+
+    // if the button state has changed:
+    if (reading != buttonState) {
+      buttonState = reading;
+      changed=true;
+      }
+    }
+  
+
+
+  // save the reading.  Next time through the loop,
+  // it'll be the lastButtonState:
+  lastButtonState = reading;
+  return changed;
+}
+
+
+fanspeed_t GetSwitchState(void)
+{
+  return buttonState;
+}
+
+
  
 
 
