@@ -306,6 +306,8 @@ void setup() {
   
 }
 
+
+
 void loop() {
 //  while (Serial.available())
 //    handleInput(Serial.read());
@@ -316,6 +318,10 @@ void loop() {
     Serial.print(F("Switch changed state to ")); 
     Serial.println(speed_select_switch); 
     //TODO: handle state transition etc.
+    
+    
+    // set fan speed...
+    SetFanSpeed(speed_select_switch);
   }
   
   switch (scheduler.poll()) {
@@ -589,12 +595,16 @@ bool SwitchChanged(void)
   bool changed=false;
 
   fanspeed_t reading = (fanspeed_t) (1 + digitalRead(SW_SPEED2) + (digitalRead(SW_SPEED3) << 1));
-  
+
   // Switch label  SW_SPEED2  SW_SPEED3  speed
   //  "1"           0         0          SPEED_1 = 1              
   //  "2"           1         0          SPEED_2 = 2
   //  "3"           0         1          SPEED_3 = 3
   //                1         1          n/a
+
+  // clamp in case for some reason both switches for speed=2 and speed=3 are activated
+  if (reading > SPEED_3) 
+    reading = SPEED_3;
 
 
   // check to see if you just pressed the button
@@ -635,6 +645,56 @@ fanspeed_t GetSwitchState(void)
 
  
 
+
+
+bool SetFanSpeed(fanspeed_t newspeed)
+{
+  if (newspeed != speed_select_fan && newspeed != SPEED_UNDEFINED) {
+    
+    speed_select_fan = newspeed;  
+ 
+    // debug...
+    Serial.print(F("Fan changed state to ")); 
+    Serial.println(speed_select_fan); 
+    
+    switch(speed_select_fan) {
+        case SPEED_0:
+          digitalWrite(RE1, LOW);
+          digitalWrite(RE2, HIGH);
+          digitalWrite(RE3, HIGH);
+          
+          setDisplay('0');
+          break;
+
+        case SPEED_1:
+          digitalWrite(RE1, HIGH);
+          digitalWrite(RE2, HIGH);
+          digitalWrite(RE3, HIGH);
+          
+          setDisplay('1');
+          break;
+
+        case SPEED_2:
+          digitalWrite(RE1, HIGH);
+          digitalWrite(RE2, LOW);
+          digitalWrite(RE3, HIGH);
+          
+          setDisplay('2');
+          break;
+          
+        case SPEED_3:
+          digitalWrite(RE1, HIGH);
+          digitalWrite(RE2, LOW);
+          digitalWrite(RE3, LOW);
+          
+          setDisplay('3');
+          break;
+          
+    }   
+    
+
+  } 
+}
 
 
 
