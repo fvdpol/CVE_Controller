@@ -11,7 +11,8 @@
       automatic switching basis the Humidity sensor values
   
  - humidity control: 
-        SP hi, SP lo (allow hysteresis) 
+       SP hi, SP lo (allow hysteresis)
+       store SP in EEPROM (persistance over reboot)
       
   - read-out/monitoring of state, measurements (temperature, humidity)
   
@@ -51,7 +52,6 @@
 
   
 
-
 */
 
 #define DISPLAY_A  6
@@ -62,6 +62,15 @@
 #define DISPLAY_F  11
 #define DISPLAY_G  12
 #define DISPLAY_DP 13
+
+#define RE1    2
+#define RE2    3
+#define RE3    4
+#define RE4    5
+
+#define SW_SPEED2  A0
+#define SW_SPEED3  A1
+
 
 
 #define _ENABLE_HEARTBEAT
@@ -223,6 +232,20 @@ void setup() {
   
   scheduler.timer(TASK_SENSOR, 1);
 
+  // I/O setup
+  pinMode(RE1, OUTPUT);
+  pinMode(RE2, OUTPUT);
+  pinMode(RE3, OUTPUT);
+  pinMode(RE4, OUTPUT);
+
+  digitalWrite(RE1, HIGH);
+  digitalWrite(RE2, HIGH);
+  digitalWrite(RE3, HIGH);
+  digitalWrite(RE4, HIGH);
+ 
+  pinMode(SW_SPEED2,  INPUT_PULLUP);
+  pinMode(SW_SPEED3,  INPUT_PULLUP);
+
 
   // Display setup
   //  
@@ -236,7 +259,7 @@ void setup() {
   pinMode(DISPLAY_DP, OUTPUT);
 
   setDisplay(' ');
-  delay(500); 
+  delay(100); 
   digitalWrite(DISPLAY_DP, HIGH);
   setDisplay('8');
   delay(500);  
@@ -256,16 +279,16 @@ void setup() {
 
 
 
-  delay(500);
-  setDisplay('0');
-  delay(500);
-  setDisplay('1');
-  delay(500);
-  setDisplay('2');
-  delay(500);
-  setDisplay('3');
- delay(500);
-  setDisplay('H');
+//  delay(500);
+//  setDisplay('0');
+//  delay(500);
+//  setDisplay('1');
+//  delay(500);
+//  setDisplay('2');
+//  delay(500);
+//  setDisplay('3');
+//  delay(500);
+//  setDisplay('H');
    
   
 }
