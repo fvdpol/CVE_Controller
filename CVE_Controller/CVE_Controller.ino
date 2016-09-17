@@ -120,11 +120,13 @@ SerialCommand sCmd;     // The SerialCommand object
 
 fanspeed_t   buttonState = SPEED_UNDEFINED ;   
 
+bool humidity_control_mode = 1;
+float humidity_setpoint_lo = 80.0;
+float humidity_setpoint_hi = 85.0;
 
 // control sources
-fanspeed_t  speed_select_switch   = SPEED_UNDEFINED;
-fanspeed_t  speed_select_remote   = SPEED_UNDEFINED;
-fanspeed_t  speed_select_humidity = SPEED_UNDEFINED;
+fanspeed_t  speed_select_user     = SPEED_2;            // speed that is selected by user (switch, command, mqtt)
+fanspeed_t  speed_select_humidity = SPEED_UNDEFINED;    // speed requested by humidity control logic
 
 // output
 fanspeed_t  speed_select_fan      = SPEED_UNDEFINED;
@@ -185,9 +187,13 @@ void showHelp(void)
   
   Serial.println(F("\n"
       "Available commands:\n"
-      
-      " hang - test watchdog\n"
+
       " disp [c] - display character\n"
+      " speed [s] - set CVE speed [0,1,2,3]\n"
+      " status - display current status\n"
+      " auto - enable automatic humidity control\n"
+      " manual - disable automatic humidity control\n"
+      " hang - test watchdog\n"
       
       " hello [name]\n"
       " p <arg1> <arg2>\n"
@@ -281,28 +287,18 @@ void setup() {
     
 
   // Setup callbacks for SerialCommand commands
-  sCmd.addCommand("hang", commandHang);  
+  sCmd.addCommand("hang", commandHang);     // test for watchdog
+  sCmd.addCommand("status", commandStatus);   // status report
+  sCmd.addCommand("auto", commandAuto);   // enable automatic humidity control
+  sCmd.addCommand("manual", commandManual);   // disable automatic humidity control
 
-
-  sCmd.addCommand("hello", commandHello);        // Echos the string argument back
   sCmd.addCommand("disp",  commandDisp);  // Converts two arguments to integers and echos them back
-  sCmd.addCommand("p",     processCommand);  // Converts two arguments to integers and echos them back
+  sCmd.addCommand("speed",  commandSpeed);  // Set CVE speed
+//sCmd.addCommand("hello", commandHello);        // Echos the string argument back
+//sCmd.addCommand("p",     processCommand);  // Converts two arguments to integers and echos them back
   sCmd.setDefaultHandler(unrecognized);      // Handler for command that isn't matched  (says "What?")
 
-
-
-
-//  delay(500);
-//  setDisplay('0');
-//  delay(500);
-//  setDisplay('1');
-//  delay(500);
-//  setDisplay('2');
-//  delay(500);
-//  setDisplay('3');
-//  delay(500);
-//  setDisplay('H');
-   
+  
   
 }
 
@@ -313,16 +309,47 @@ void loop() {
 //    handleInput(Serial.read());
   sCmd.readSerial();     // We don't do much, just process serial commands
 
+
+  // handle changes from the (hardware) input switch located in kitchen
   if (SwitchChanged()) {
-    speed_select_switch = GetSwitchState();
-    Serial.print(F("Switch changed state to ")); 
-    Serial.println(speed_select_switch); 
-    //TODO: handle state transition etc.
-    
-    
-    // set fan speed...
-    SetFanSpeed(speed_select_switch);
+    speed_select_user = GetSwitchState();
+    Serial.print(F("input: Switch changed speed to ")); 
+    Serial.println(speed_select_user); 
   }
+
+
+
+// set fan speed...
+  if (speed_select_humidity != SPEED_UNDEFINED)
+    speed_select_fan = speed_select_humidity;
+  else
+    speed_select_fan = speed_select_user;
+
+  SetFanSpeed(speed_select_fan);
+  
+
+
+// set display to relfect status/speed
+  if (speed_select_humidity != SPEED_UNDEFINED) {
+    setDisplay('H');
+  } else
+    switch(speed_select_user) {
+     case SPEED_0:            
+          setDisplay('0');
+          break;
+     case SPEED_1:            
+          setDisplay('1');
+          break;
+     case SPEED_2:            
+          setDisplay('2');
+          break;
+     case SPEED_3:
+          setDisplay('3');
+          break;
+    }          
+
+
+  
   
   switch (scheduler.poll()) {
 
@@ -339,14 +366,12 @@ void loop() {
         Serial.println(F("Send Lifesign message"));
       }
       if (sensor.sensorExists()) {
-
           si7021_env data = sensor.getHumidityAndTemperature();
           Serial.print("Temperature: ");
           Serial.println(data.celsiusHundredths/100.0);
           Serial.print("Humidity:    ");
           Serial.println(data.humidityBasisPoints/100.0);
       }
-
 
       scheduler.timer(TASK_SENSOR, SENSOR_INTERVAL);
       break;
@@ -437,6 +462,86 @@ void commandHang(void) {
   Serial.println(F("Sleepy watchdog???"));
 }
 
+
+
+String SpeedString(fanspeed_t s) {
+    switch(s) {
+     case SPEED_UNDEFINED:
+      return F("SPEED_UNDEFINED");
+     case SPEED_0:
+      return F("SPEED_0");
+     case SPEED_1:
+      return F("SPEED_1");
+     case SPEED_2:
+      return F("SPEED_2");
+     case SPEED_3:
+      return F("SPEED_3");
+     default:
+      return F("Invalid");
+    }
+}
+
+void commandStatus(void) {
+  Serial.println(F("\nStatus:\n"));
+
+  Serial.print(F("Free RAM: "));
+  Serial.println(freeRam());
+
+  Serial.print(F("speed_select_user: "));
+  Serial.println(SpeedString(speed_select_user));
+  
+  Serial.print(F("speed_select_humidity: "));
+  Serial.println(SpeedString(speed_select_humidity));
+  
+  Serial.print(F("speed_select_fan: "));
+  Serial.println(SpeedString(speed_select_fan));
+
+
+  Serial.print(F("humidity_control_mode: "));
+  Serial.println(humidity_control_mode);
+  Serial.print(F("humidity_setpoint_lo: "));
+  Serial.println(humidity_setpoint_lo);
+  Serial.print(F("humidity_setpoint_hi: "));
+  Serial.println(humidity_setpoint_hi);
+
+
+  Serial.print(F("Sensor: "));
+  if (sensor.sensorExists()) {
+    Serial.print("SI70");
+    Serial.print(sensor.getDeviceId());
+    sensor.setHeater(false);
+  } else {
+    Serial.print(F("No SI702x"));
+  }
+  Serial.println(F(" detected"));
+  
+  if (sensor.sensorExists()) {
+    si7021_env data = sensor.getHumidityAndTemperature();
+    Serial.print("Temperature: ");
+    Serial.println(data.celsiusHundredths/100.0);
+    Serial.print("Humidity:    ");
+    Serial.println(data.humidityBasisPoints/100.0);
+   }
+  
+
+}
+
+
+
+void commandAuto(void) {
+  Serial.println(F("mode: auto"));
+  humidity_control_mode = 1;
+}
+
+
+void commandManual(void) {
+  Serial.println(F("mode: manual"));
+  humidity_control_mode = 0;
+}
+
+
+
+
 void commandDisp() {
   char *arg;
   arg = sCmd.next();    // Get the next argument from the SerialCommand object buffer
@@ -447,6 +552,41 @@ void commandDisp() {
     setDisplay(c);
   }
 }
+
+void commandSpeed() {
+  char *arg;
+  arg = sCmd.next();    // Get the next argument from the SerialCommand object buffer
+  if (arg != NULL) {    // As long as it existed, take it
+    char c = arg[0];
+       
+    fanspeed_t new_speed   = SPEED_UNDEFINED;
+    switch(c) {
+     case '0':
+           new_speed   = SPEED_0;
+        break;
+
+     case '1':
+           new_speed   = SPEED_1;
+        break;
+
+     case '2':
+           new_speed   = SPEED_2;
+        break;
+
+     case '3':
+           new_speed   = SPEED_3;
+        break;
+    }
+  
+    if (new_speed != SPEED_UNDEFINED) {  
+      Serial.print(F("input: Command changed speed to ")); 
+      Serial.println(new_speed); 
+      speed_select_user = new_speed;      
+    }    
+  }
+}
+
+
 
 
 void commandHello() {
@@ -577,7 +717,11 @@ void setDisplay(char code) {
   }
  }
  
+
  
+ 
+
+
 
 
 
@@ -629,7 +773,6 @@ bool SwitchChanged(void)
     }
   
 
-
   // save the reading.  Next time through the loop,
   // it'll be the lastButtonState:
   lastButtonState = reading;
@@ -647,52 +790,45 @@ fanspeed_t GetSwitchState(void)
 
 
 
+
+
 bool SetFanSpeed(fanspeed_t newspeed)
 {
-  if (newspeed != speed_select_fan && newspeed != SPEED_UNDEFINED) {
+  static fanspeed_t lastspeed = SPEED_UNDEFINED;
+  
+  if (newspeed != lastspeed && newspeed != SPEED_UNDEFINED) {
     
-    speed_select_fan = newspeed;  
+    lastspeed = newspeed;  
  
     // debug...
-    Serial.print(F("Fan changed state to ")); 
-    Serial.println(speed_select_fan); 
+    Serial.print(F("fan: Changed speed to ")); 
+    Serial.println(newspeed); 
     
-    switch(speed_select_fan) {
+    switch(newspeed) {
         case SPEED_0:
           digitalWrite(RE1, LOW);
           digitalWrite(RE2, HIGH);
-          digitalWrite(RE3, HIGH);
-          
-          setDisplay('0');
+          digitalWrite(RE3, HIGH);          
           break;
 
         case SPEED_1:
           digitalWrite(RE1, HIGH);
           digitalWrite(RE2, HIGH);
           digitalWrite(RE3, HIGH);
-          
-          setDisplay('1');
           break;
 
         case SPEED_2:
           digitalWrite(RE1, HIGH);
           digitalWrite(RE2, LOW);
           digitalWrite(RE3, HIGH);
-          
-          setDisplay('2');
           break;
           
         case SPEED_3:
           digitalWrite(RE1, HIGH);
           digitalWrite(RE2, LOW);
           digitalWrite(RE3, LOW);
-          
-          setDisplay('3');
-          break;
-          
+          break;          
     }   
-    
-
   } 
 }
 
