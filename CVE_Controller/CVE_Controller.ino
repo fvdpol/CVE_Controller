@@ -97,14 +97,17 @@
 
 #define LED_GLOWTIME  1  /* in 0.1s */
 
-#define SENSOR_INTERVAL 50  /* in 0.1s */
+#define MEASURE_INTERVAL 50  /* in 0.1s */
 
 enum {
 #ifdef _ENABLE_HEARTBEAT 
   TASK_HEARTBEAT,
 #endif
   TASK_LIFESIGN,
-  TASK_SENSOR,
+  TASK_MEASURE,
+  TASK_HUMIDITY_LOW,
+  TASK_HUMIDITY_HIGH,
+  TASK_DISPLAY,
   TASK_LIMIT };
 
 static word schedBuf[TASK_LIMIT];
@@ -116,13 +119,18 @@ SI7021 sensor;
 
 SerialCommand sCmd;     // The SerialCommand object
 
-
-
 fanspeed_t   buttonState = SPEED_UNDEFINED ;   
 
-bool humidity_control_mode = 1;
+
+bool humidity_control_mode = 1;   // 1= auto
 float humidity_setpoint_lo = 80.0;
-float humidity_setpoint_hi = 85.0;
+float humidity_setpoint_hi = 85.0; 
+int   humidity_delay = 20;     // seconds before speed change
+// future: set maximum speed for humidity control (otherwise this is SPEED_3
+
+float sensor_temperature = -1.0;
+float sensor_humidity = -1.0;
+
 
 // control sources
 fanspeed_t  speed_select_user     = SPEED_2;            // speed that is selected by user (switch, command, mqtt)
@@ -130,6 +138,7 @@ fanspeed_t  speed_select_humidity = SPEED_UNDEFINED;    // speed requested by hu
 
 // output
 fanspeed_t  speed_select_fan      = SPEED_UNDEFINED;
+
 
 
 int freeRam () {
@@ -249,7 +258,9 @@ void setup() {
   }
   Serial.println(F(" Humidity Sensor detected"));
   
-  scheduler.timer(TASK_SENSOR, 1);
+  scheduler.timer(TASK_MEASURE, 1);
+  scheduler.timer(TASK_DISPLAY, 1);
+
 
   // I/O setup
   pinMode(RE1, OUTPUT);
@@ -305,6 +316,9 @@ void setup() {
 
 
 void loop() {
+  static int display_mode = 0;
+
+  
 //  while (Serial.available())
 //    handleInput(Serial.read());
   sCmd.readSerial();     // We don't do much, just process serial commands
@@ -314,7 +328,7 @@ void loop() {
   if (SwitchChanged()) {
     speed_select_user = GetSwitchState();
     Serial.print(F("input: Switch changed speed to ")); 
-    Serial.println(speed_select_user); 
+    Serial.println(SpeedString(speed_select_user)); 
   }
 
 
@@ -328,27 +342,6 @@ void loop() {
   SetFanSpeed(speed_select_fan);
   
 
-
-// set display to relfect status/speed
-  if (speed_select_humidity != SPEED_UNDEFINED) {
-    setDisplay('H');
-  } else
-    switch(speed_select_user) {
-     case SPEED_0:            
-          setDisplay('0');
-          break;
-     case SPEED_1:            
-          setDisplay('1');
-          break;
-     case SPEED_2:            
-          setDisplay('2');
-          break;
-     case SPEED_3:
-          setDisplay('3');
-          break;
-    }          
-
-
   
   
   switch (scheduler.poll()) {
@@ -361,19 +354,72 @@ void loop() {
 //      scheduler.timer(TASK_LIFESIGN, LIFESIGN_INTERVAL);
 //      break;
 
-    case TASK_SENSOR:
+    case TASK_MEASURE:
+    
       if (debug_txt) {  
         Serial.println(F("Send Lifesign message"));
       }
       if (sensor.sensorExists()) {
           si7021_env data = sensor.getHumidityAndTemperature();
-          Serial.print("Temperature: ");
-          Serial.println(data.celsiusHundredths/100.0);
-          Serial.print("Humidity:    ");
-          Serial.println(data.humidityBasisPoints/100.0);
+          sensor_temperature = data.celsiusHundredths/100.0;
+          sensor_humidity = data.humidityBasisPoints/100.0;
+          Serial.print(F("Temperature: "));
+          Serial.println(sensor_temperature);
+          Serial.print(F("Humidity:    "));
+          Serial.println(sensor_humidity);
       }
 
-      scheduler.timer(TASK_SENSOR, SENSOR_INTERVAL);
+
+      // humidity control
+      if (humidity_control_mode) {    
+          
+          // start/cancel timer LOW
+          if (speed_select_humidity != SPEED_UNDEFINED) {
+            if (sensor_humidity < humidity_setpoint_lo) {
+              if (scheduler.idle(TASK_HUMIDITY_LOW)) {
+                Serial.print(F("dbg: start timer HUMIDITY LOW"));
+                scheduler.timer(TASK_HUMIDITY_LOW, humidity_delay * 10);
+              }
+            } else {
+              if (!scheduler.idle(TASK_HUMIDITY_LOW)) {
+                Serial.print(F("dbg: cancel timer HUMIDITY LOW"));
+                scheduler.cancel(TASK_HUMIDITY_LOW);
+              }
+            }
+          }
+          
+          // start/cancel timer HIGH
+          if (sensor_humidity > humidity_setpoint_hi) {
+            if (scheduler.idle(TASK_HUMIDITY_HIGH)) {
+              Serial.print(F("dbg: start timer HUMIDITY HIGH"));
+              scheduler.timer(TASK_HUMIDITY_HIGH, humidity_delay * 10);
+            }
+          } else {
+            if (!scheduler.idle(TASK_HUMIDITY_HIGH)) {
+              Serial.print(F("dbg: cancel timer HUMIDITY HIGH"));
+              scheduler.cancel(TASK_HUMIDITY_HIGH);
+            }
+          }
+
+
+      } else {
+        // manual mode, humidity control disabled    
+        if (!scheduler.idle(TASK_HUMIDITY_LOW)) {
+          Serial.print(F("dbg: cancel timer HUMIDITY LOW"));
+          scheduler.cancel(TASK_HUMIDITY_LOW);
+        }
+
+        if (!scheduler.idle(TASK_HUMIDITY_HIGH)) {
+          Serial.print(F("dbg: cancel timer HUMIDITY HIGH"));
+          scheduler.cancel(TASK_HUMIDITY_HIGH);
+        }
+
+        if (speed_select_humidity != SPEED_UNDEFINED) {
+          speed_select_humidity = SPEED_UNDEFINED;
+        }
+      }    
+
+      scheduler.timer(TASK_MEASURE, MEASURE_INTERVAL);
       break;
 
 
@@ -382,10 +428,83 @@ void loop() {
         handleHeartBeat();
       break;
 #endif /* _ENABLE_HEARTBEAT */   
+
+
+
+    case TASK_HUMIDITY_LOW:
+            Serial.println(F("Humidity LOW Timer expired.. time to ramp down!"));
+            switch (speed_select_humidity) {
+              case SPEED_1:
+                speed_select_humidity = SPEED_0;
+                break;
+              case SPEED_2:
+                speed_select_humidity = SPEED_1;
+                break;
+              case SPEED_3:
+                speed_select_humidity = SPEED_2;
+                break;
+            }
+            // set speed override when ramped down to original requested speed
+            if (speed_select_humidity <= speed_select_user) {
+              speed_select_humidity = SPEED_UNDEFINED;
+            }
+            
+            Serial.print(F("humidity: Changed speed to ")); 
+            Serial.println(SpeedString(speed_select_humidity)); 
+            break;
+    
+    case TASK_HUMIDITY_HIGH:
+            Serial.println(F("Humidity HIGH Timer expired.. time to ramp up!"));
+            if (speed_select_humidity == SPEED_UNDEFINED) {
+                speed_select_humidity = speed_select_fan;
+            }
+            switch (speed_select_humidity) {
+              case SPEED_0:
+                speed_select_humidity = SPEED_1;
+                break;
+              case SPEED_1:
+                speed_select_humidity = SPEED_2;
+                break;
+              case SPEED_2:
+                speed_select_humidity = SPEED_3;
+                break;
+            }
+            Serial.print(F("humidity: Changed speed to ")); 
+            Serial.println(SpeedString(speed_select_humidity)); 
+            break;                 
+
+
+    // update LED display on CVE controller
+    // in case Humidity control mode is active the dispay will alternate between H and the fan speed
+    case TASK_DISPLAY:
       
-      
-      
+      if (display_mode == 0 && speed_select_humidity != SPEED_UNDEFINED) {
+          setDisplay('H');         
+          display_mode = 1;
+      } else {    
+          switch(speed_select_fan) {
+           case SPEED_0:            
+                setDisplay('0');
+                break;
+           case SPEED_1:            
+                setDisplay('1');
+                break;
+           case SPEED_2:            
+                setDisplay('2');
+                break;
+           case SPEED_3:
+                setDisplay('3');
+                break;
+          } 
+          display_mode = 0;
+    }
+    
+    scheduler.timer(TASK_DISPLAY, 5);
+    break;
+
+            
   }
+  
 
 }
 
