@@ -6,10 +6,9 @@ Controller for the Itho CVE unit
 Current Status: work in progress 
 	
 Todo:
-	- readout of input switch
-	- control of relay
-	- state machine
-	- mains wiring
+	- turn unit in stand-alone device
+	- wireless communication via ESP8266
+	- ESP-Link
 
 Done:
 	- contruction of case/hardware
@@ -18,6 +17,11 @@ Done:
 	- watchdog (including bootloader upgrade)
 	- control of 7-segment display
 	- read temperature moisture from SI7020 sensor
+	- readout of input switch
+	- control of relay
+	- state machine
+	- mains wiring
+
 
 Frank van de Pol, 2016
 
@@ -307,5 +311,16 @@ Pinout:
 | 2   | GND      | Blue (+shield)
 | 3   | SCL      | White
 | 4   | SDA      | Yellow
+
+
+
+## Extension with ESP-Link
+
+https://github.com/jeelabs/esp-link
+
+NodeMCU "LoLin" Board as hardware
+
+wifi mac address: 5c:cf:7f:0a:18:a4
+Software: esp-link 2.2.3
 
 

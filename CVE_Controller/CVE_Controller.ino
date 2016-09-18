@@ -92,7 +92,8 @@
 #include <SI7021.h>           // https://github.com/fvdpol/SI7021
 
 
-#define SERIAL_BAUD 57600
+//#define SERIAL_BAUD 57600
+#define SERIAL_BAUD 115200
 
 
 #define LED_GLOWTIME  1  /* in 0.1s */
@@ -123,13 +124,16 @@ fanspeed_t   buttonState = SPEED_UNDEFINED ;
 
 
 bool humidity_control_mode = 1;   // 1= auto
-float humidity_setpoint_lo = 80.0;
-float humidity_setpoint_hi = 85.0; 
-int   humidity_delay = 20;     // seconds before speed change
+float humidity_setpoint_lo = 80.0;                                // TODO: set via cmd/mqtt
+float humidity_setpoint_hi = 85.0;                                // TODO: set via cmd/mqtt
+int   humidity_delay = 20;     // seconds before speed change     // TODO: set via cmd/mqtt
 // future: set maximum speed for humidity control (otherwise this is SPEED_3
 
 float sensor_temperature = -1.0;
 float sensor_humidity = -1.0;
+
+// TODO: publish interval temp/humidity values via MQTT
+
 
 
 // control sources
