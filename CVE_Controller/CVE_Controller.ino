@@ -127,11 +127,11 @@ SerialCommand sCmd;     // The SerialCommand object
 fanspeed_t   buttonState = SPEED_UNDEFINED ;   
 
 
-bool humidity_control_mode = 1;   // 1= auto
-float humidity_setpoint_lo = 80.0;                                // TODO: set via cmd/mqtt
-float humidity_setpoint_hi = 85.0;                                // TODO: set via cmd/mqtt
-int   humidity_delay = 20;     // seconds before speed change     // TODO: set via cmd/mqtt
-// future: set maximum speed for humidity control (otherwise this is SPEED_3
+bool humidity_control_mode = 1;   // 1= auto                      // TODO: set via mqtt
+float humidity_setpoint_lo = 60.0;                                // TODO: set via mqtt
+float humidity_setpoint_hi = 65.0;                                // TODO: set via mqtt
+int   humidity_delay = 60;     // seconds before speed change     // TODO: set via mqtt
+fanspeed_t humidity_max_speed = SPEED_3;  // maximum speed
 
 float sensor_temperature = -1.0;
 float sensor_humidity = -1.0;
@@ -205,12 +205,16 @@ void showHelp(void)
   Serial.println(F("\n"
       "Available commands:\n"
 
-      " disp [c] - display character\n"
       " speed [s] - set CVE speed [0,1,2,3]\n"
       " status - display current status\n"
       " auto - enable automatic humidity control\n"
       " manual - disable automatic humidity control\n"
+      " splo [%] - set low setpoint humidity\n"
+      " sphi [%] - set high setpoint humidity\n"
+      " delay [s] - set delay [s] before automatic speed change\n"
+      "\n"
       " hang - test watchdog\n"
+      " disp [c] - display character\n"
       
       " hello [name]\n"
       " p <arg1> <arg2>\n"
@@ -312,13 +316,18 @@ void setup() {
     
 
   // Setup callbacks for SerialCommand commands
-  sCmd.addCommand("hang", commandHang);     // test for watchdog
+  sCmd.addCommand("hang",   commandHang);     // test for watchdog
   sCmd.addCommand("status", commandStatus);   // status report
-  sCmd.addCommand("auto", commandAuto);   // enable automatic humidity control
+  sCmd.addCommand("auto",   commandAuto);   // enable automatic humidity control
   sCmd.addCommand("manual", commandManual);   // disable automatic humidity control
+  sCmd.addCommand("splo",   commandSPLow);  
+  sCmd.addCommand("sphi",   commandSPHigh); 
+  sCmd.addCommand("delay",  commandDelay);
+  
 
-  sCmd.addCommand("disp",  commandDisp);  // Converts two arguments to integers and echos them back
+  sCmd.addCommand("disp",   commandDisp);    // test display 
   sCmd.addCommand("speed",  commandSpeed);  // Set CVE speed
+  
 //sCmd.addCommand("hello", commandHello);        // Echos the string argument back
 //sCmd.addCommand("p",     processCommand);  // Converts two arguments to integers and echos them back
   sCmd.setDefaultHandler(unrecognized);      // Handler for command that isn't matched  (says "What?")
@@ -401,7 +410,7 @@ void loop() {
           }
           
           // start/cancel timer HIGH
-          if (sensor_humidity > humidity_setpoint_hi) {
+          if (sensor_humidity > humidity_setpoint_hi && speed_select_fan < humidity_max_speed ) {
             if (scheduler.idle(TASK_HUMIDITY_HIGH)) {
               Serial.print(F("dbg: start timer HUMIDITY HIGH"));
               scheduler.timer(TASK_HUMIDITY_HIGH, humidity_delay * 10);
@@ -649,7 +658,8 @@ void commandStatus(void) {
   Serial.println(humidity_setpoint_lo);
   Serial.print(F("humidity_setpoint_hi: "));
   Serial.println(humidity_setpoint_hi);
-
+  Serial.print(F("humidity_delay: "));
+  Serial.println(humidity_delay);
 
   Serial.print(F("Sensor: "));
   if (sensor.sensorExists()) {
@@ -681,6 +691,38 @@ void commandManual(void) {
 }
 
 
+  
+void commandSPLow() {
+  char *arg;
+  arg = sCmd.next();    // Get the next argument from the SerialCommand object buffer
+  if (arg != NULL) {    // As long as it existed, take it
+    humidity_setpoint_lo = atof(arg);    
+    Serial.print(F("humidity_setpoint_lo: "));
+    Serial.println(humidity_setpoint_lo);
+  }
+}
+
+
+void commandSPHigh() {
+  char *arg;
+  arg = sCmd.next();    // Get the next argument from the SerialCommand object buffer
+  if (arg != NULL) {    // As long as it existed, take it
+    humidity_setpoint_hi = atof(arg);    
+    Serial.print(F("humidity_setpoint_hi: "));
+    Serial.println(humidity_setpoint_hi);
+  }
+}
+
+void commandDelay() {
+  char *arg;
+  arg = sCmd.next();    // Get the next argument from the SerialCommand object buffer
+  if (arg != NULL) {    // As long as it existed, take it
+    humidity_delay = atoi(arg);    
+    Serial.print(F("humidity_delay: "));
+    Serial.println(humidity_delay);
+  }
+}
+
 
 
 void commandDisp() {
@@ -693,6 +735,8 @@ void commandDisp() {
     setDisplay(c);
   }
 }
+
+
 
 void commandSpeed() {
   char *arg;
