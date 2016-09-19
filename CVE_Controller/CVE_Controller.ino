@@ -50,7 +50,9 @@
     locking-up when watchdog reset occurs.
     https://andreasrohner.at/posts/Electronics/How-to-make-the-Watchdog-Timer-work-on-an-Arduino-Pro-Mini-by-replacing-the-bootloader/
 
-  
+
+  update september 2016
+  add esp-link ESP8266 wifi co-processor to allow stand-allon communications via mqtt + remote monitoring
 
 */
 
@@ -99,6 +101,7 @@
 #define LED_GLOWTIME  1  /* in 0.1s */
 
 #define MEASURE_INTERVAL 50  /* in 0.1s */
+#define PUBLISH_INTERVAL 600 /* in 0.1s */    // ??? make configurable???
 
 enum {
 #ifdef _ENABLE_HEARTBEAT 
@@ -106,6 +109,7 @@ enum {
 #endif
   TASK_LIFESIGN,
   TASK_MEASURE,
+  TASK_PUBLISH,
   TASK_HUMIDITY_LOW,
   TASK_HUMIDITY_HIGH,
   TASK_DISPLAY,
@@ -257,13 +261,19 @@ void setup() {
     Serial.print("SI70");
     Serial.print(sensor.getDeviceId());
     sensor.setHeater(false);
+
+    // initialise sensor readings
+    si7021_env data = sensor.getHumidityAndTemperature();
+    sensor_temperature = data.celsiusHundredths/100.0;
+    sensor_humidity = data.humidityBasisPoints/100.0;
   } else {
     Serial.print(F("No SI702x"));
   }
   Serial.println(F(" Humidity Sensor detected"));
   
   scheduler.timer(TASK_MEASURE, 1);
-  scheduler.timer(TASK_DISPLAY, 1);
+  scheduler.timer(TASK_PUBLISH, 100);
+  scheduler.timer(TASK_DISPLAY, 10);
 
 
   // I/O setup
@@ -360,17 +370,15 @@ void loop() {
 
     case TASK_MEASURE:
     
-      if (debug_txt) {  
-        Serial.println(F("Send Lifesign message"));
-      }
       if (sensor.sensorExists()) {
           si7021_env data = sensor.getHumidityAndTemperature();
-          sensor_temperature = data.celsiusHundredths/100.0;
-          sensor_humidity = data.humidityBasisPoints/100.0;
-          Serial.print(F("Temperature: "));
-          Serial.println(sensor_temperature);
-          Serial.print(F("Humidity:    "));
-          Serial.println(sensor_humidity);
+          // apply exponential filter to smooth out noise --  ??? smoothing factors configurable???
+          sensor_temperature = (0.90 * sensor_temperature) + (0.10 * data.celsiusHundredths/100.0);
+          sensor_humidity = (0.90 * sensor_humidity) + (0.10 * data.humidityBasisPoints/100.0);
+//          Serial.print(F("Temperature: "));
+//          Serial.println(sensor_temperature);
+//          Serial.print(F("Humidity:    "));
+//          Serial.println(sensor_humidity);
       }
 
 
@@ -425,6 +433,21 @@ void loop() {
 
       scheduler.timer(TASK_MEASURE, MEASURE_INTERVAL);
       break;
+
+
+
+    case TASK_PUBLISH:
+
+      Serial.print(F("Temperature: "));
+      Serial.println(sensor_temperature);
+      Serial.print(F("Humidity:    "));
+      Serial.println(sensor_humidity);
+
+
+      scheduler.timer(TASK_PUBLISH, PUBLISH_INTERVAL);
+      break;
+    
+      
 
 
 #ifdef _ENABLE_HEARTBEAT      
@@ -637,16 +660,11 @@ void commandStatus(void) {
     Serial.print(F("No SI702x"));
   }
   Serial.println(F(" detected"));
-  
-  if (sensor.sensorExists()) {
-    si7021_env data = sensor.getHumidityAndTemperature();
-    Serial.print("Temperature: ");
-    Serial.println(data.celsiusHundredths/100.0);
-    Serial.print("Humidity:    ");
-    Serial.println(data.humidityBasisPoints/100.0);
-   }
-  
 
+  Serial.print("Temperature: ");
+  Serial.println(sensor_temperature);
+  Serial.print("Humidity: ");
+  Serial.println(sensor_humidity);
 }
 
 
