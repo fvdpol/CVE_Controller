@@ -441,21 +441,21 @@ void loop() {
   
   esp.Process();
 
-  if (connected && (millis()-last) > 4000) {
-    Serial.println("publishing");
-    char buf[12];
-
-    itoa(count++, buf, 10);
-    mqtt.publish("esp-link/1", buf);
-
-    itoa(count+99, buf, 10);
-    mqtt.publish("hello/world/arduino", buf);
-
-    uint32_t t = cmd.GetTime();
-    Serial.print("Time: "); Serial.println(t);
-
-    last = millis();
-  }
+//  if (connected && (millis()-last) > 4000) {
+//    Serial.println("publishing");
+//    char buf[12];
+//
+//    itoa(count++, buf, 10);
+//    mqtt.publish("esp-link/1", buf);
+//
+//    itoa(count+99, buf, 10);
+//    mqtt.publish("hello/world/arduino", buf);
+//
+//    uint32_t t = cmd.GetTime();
+//    Serial.print("Time: "); Serial.println(t);
+//
+//    last = millis();
+//  }
 
   
 
@@ -569,6 +569,20 @@ void loop() {
       Serial.println(sensor_temperature);
       Serial.print(F("Humidity:    "));
       Serial.println(sensor_humidity);
+
+
+      if (connected) {
+    
+      char buf[12];
+
+      dtostrf(sensor_temperature,4,2,buf);
+      mqtt.publish("esp-link/cve-controller/temperature", buf);
+
+      dtostrf(sensor_humidity,4,2,buf);
+      mqtt.publish("esp-link/cve-controller/humidity", buf);
+    
+
+  }
 
 
       scheduler.timer(TASK_PUBLISH, PUBLISH_INTERVAL);
